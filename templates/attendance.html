@@ -38,14 +38,23 @@
             <form method="POST">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4>Batch: <span class="text-primary">{{ selected_batch }}</span></h4>
-                    <input type="date" name="date" value="{{ today }}" class="form-control w-25" required>
+                    <div class="d-flex align-items-center gap-3">
+                        <label class="fw-bold">Date:</label>
+                        <input type="date" name="date" value="{{ today }}" class="form-control w-auto" required>
+                    </div>
                 </div>
+                
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
                             <th>Student Name</th>
-                            <th class="text-center">Mark Present</th>
+                            <th class="text-center">
+                                <div class="form-check d-inline-block">
+                                    <input type="checkbox" id="selectAll" class="form-check-input shadow-none">
+                                    <label class="form-check-label fw-bold" for="selectAll">Mark Everyone Present</label>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -54,7 +63,7 @@
                             <td>{{ loop.index }}</td>
                             <td>{{ student.name }}</td>
                             <td class="text-center">
-                                <input type="checkbox" name="status" value="{{ student.id }}" class="form-check-input shadow-none">
+                                <input type="checkbox" name="status" value="{{ student.id }}" class="form-check-input student-checkbox shadow-none">
                             </td>
                         </tr>
                         {% endfor %}
@@ -68,4 +77,13 @@
     <div class="alert alert-info">Please select a batch to display students.</div>
     {% endif %}
 </div>
+
+<script>
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        for (let checkbox of checkboxes) {
+            checkbox.checked = this.checked;
+        }
+    });
+</script>
 {% endblock %}
