@@ -1,7 +1,31 @@
 from flask import Flask, flash, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
+import pandas as pd
+from sklearn.tree import DecisionTreeClassifier
 
+
+student_data = pd.DataFrame({
+    'attendance': [90, 85, 80, 70, 60, 50, 40, 30],
+    'performance': ['Good', 'Good', 'Good', 'Average', 'Average', 'Average', 'Poor', 'Poor']
+})
+
+X_student = student_data[['attendance']]
+y_student = student_data['performance']
+
+student_model = DecisionTreeClassifier()
+student_model.fit(X_student, y_student)
+
+stress_data = pd.DataFrame({
+    'lectures': [1, 2, 3, 4, 5, 6, 7],
+    'stress': ['Relaxed', 'Relaxed', 'Moderate', 'Moderate', 'Moderate', 'Overloaded', 'Overloaded']
+})
+
+X_stress = stress_data[['lectures']]
+y_stress = stress_data['stress']
+
+stress_model = DecisionTreeClassifier()
+stress_model.fit(X_stress, y_stress)
 app = Flask(__name__)
 app.secret_key = "saanvi_123"
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///task.db"
@@ -37,12 +61,13 @@ class Wellness(db.Model):
     date_created = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-
 @app.route('/')
 def index():
     task_count = LectureTask.query.count()
     latest_wellness = Wellness.query.order_by(Wellness.id.desc()).first()
-    return render_template('index.html', task_count=task_count, mood=latest_wellness)
+    stress_level = stress_model.predict([[task_count]])[0]
+
+    return render_template('index.html', task_count=task_count, mood=latest_wellness,  stress_level=stress_level)
 
 @app.route('/schedule', methods=['GET', 'POST'])
 def schedule():
@@ -104,22 +129,30 @@ def attendance():
 
 @app.route('/attendance_report')
 def attendance_report():
-    students = Student.query.all()
+    batches = db.session.query(Student.batch).distinct().all()
+    selected_batch = request.args.get('batch')
+    if selected_batch:
+        students = Student.query.filter_by(batch=selected_batch).all()
+    else:
+        students = []
     report = []
     
     for student in students:
         total_days = Attendance.query.filter_by(student_id=student.id).count()
         present_days = Attendance.query.filter_by(student_id=student.id, status='Present').count()
         percentage = (present_days / total_days * 100) if total_days > 0 else 0
-        
+        performance = student_model.predict([[percentage]])[0]
+
         report.append({
-            'name': student.name,
-            'batch': student.batch,
-            'percentage': round(percentage, 1),
-            'total': total_days
-        })
+        'name': student.name,
+        'batch': student.batch,
+        'percentage': round(percentage, 1),
+        'total': total_days,
+        'performance': performance
+    })
         
-    return render_template('report.html', report=report)
+        
+    return render_template('report.html', report=report, batches=batches, selected_batch=selected_batch)
 
 
 @app.route('/wellness', methods=['GET', 'POST'])
